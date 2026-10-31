@@ -4,6 +4,14 @@ Use a Rex server from **stock Herdr**, alongside its existing local and SSH spac
 Rex appears as a machine group in Spaces. No Herdr fork, backend switcher, mod API
 extension, or replacement herdr-core is required.
 
+![Rex sessions in stock Herdr](preview.png)
+
+[RECIPE.md](RECIPE.md) is a reconstruction brief for building the bridge from an
+empty folder. This repository is the working implementation. It is an external
+bridge package, not a JavaScript mod for the Herdr mod catalog.
+
+Companion mod: [Easel for Herdr](https://github.com/yycholla/herdr-easel-mod).
+
 This is a standalone prototype extracted from the Rex integration in
 [yycholla/herdr-app](https://github.com/yycholla/herdr-app). It implements the
 existing generation-1 `hc connect` protocol and registers through herdr-core's
@@ -15,6 +23,8 @@ Requires Rust, **Zig 0.16.0**, libclang/Clang, and the pinned Ghostty submodule.
 Build from this repository, independently of either Herdr checkout:
 
 ```sh
+git clone --recurse-submodules https://github.com/yycholla/herdr-rex-bridge.git
+cd herdr-rex-bridge
 git submodule update --init --depth 1
 cargo build --locked
 ```
