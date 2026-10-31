@@ -62,6 +62,9 @@ The bridge does not ask Rex to close its sessions when the connection ends.
 - Attach/reconnect repaint, screen colors/styles, cursor, history, primary and
   alternate screens, keyboard modes, and unfinished VT/UTF-8 input.
 - Session/tab/pane changes through the projected Herdr layout document.
+- Herdr mod panes such as Easel beside Rex terminals. Their props and placement
+  are kept in bridge metadata and survive Rex updates and bridge reconnects;
+  Rex sees no fake terminal or custom block for them.
 - Terminal listing, creation, labels, read, keep, and close through the adapter.
   Background runs materialize even when no viewer opens them.
 - Terminal/status/layout events, framed stream credits, and reconnect through
@@ -86,6 +89,8 @@ identifies this program. Unsupported operations return errors.
   implemented. Terminal IO still runs on the selected Rex server.
 - Rex floating layers, non-terminal blocks, Lua client key bindings and client
   actions are not projected. Existing non-terminal blocks are preserved.
+- A Herdr mod in a Rex tab needs a terminal beside it. Use a local Herdr mod
+  tab for a standalone canvas. Removing its anchor terminal hides the mod.
 - ID/layout extras assume one registered core connection per Rex endpoint.
   Multiple independent cores writing those extras concurrently are not supported.
 
@@ -117,6 +122,11 @@ own Rex server, checks typing and native pane splitting, saves a screenshot,
 and tears down the sandbox. It verifies that the upstream worktree stayed clean.
 
 Verified against upstream Herdr `07ba77e`, hc `0.1.14`, and Rex API revision 7.
+With Easel built in a sibling checkout (or `EASEL_WORKTREE` set),
+`tests/easel_ui_smoke.py` also verifies its MCP opens beside a raw `REX_BLOCK`,
+remains after a Rex session rename, survives bridge transport reconnection,
+and creates no extra Rex terminal.
+
 The captured result is in `artifacts/stock-herdr-rex.png`; the companion JSON
 contains Herdr's space/pane inspection and error list.
 

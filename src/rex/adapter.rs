@@ -11,6 +11,7 @@ use super::project::{self, Aliases, Bind, Pending, SpaceExtra, Step};
 use super::stream::{Decoder, Piece};
 use super::transport::{Control, Endpoint, Event, RexError};
 use crate::hc::{self, Attached, Core, Kind, Link, RpcError, Stream};
+use crate::mod_panes::{self, Decorations};
 use anyhow::{Context as _, Result, anyhow};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, json};
@@ -86,6 +87,8 @@ struct Saved {
     aliases: BTreeMap<String, String>,
     #[serde(default)]
     extras: BTreeMap<String, SpaceExtra>,
+    #[serde(default)]
+    mod_panes: Decorations,
 }
 
 /// One event stream for Herdr: every server's events, in one seq order.
@@ -106,6 +109,7 @@ struct State {
     version: u64,
     aliases: Aliases,
     extras: BTreeMap<String, SpaceExtra>,
+    mod_panes: Decorations,
     /// Terminal records as herdr-core shapes them: by block id, or by
     /// address while pending.
     terminals: BTreeMap<String, Value>,
@@ -265,6 +269,7 @@ impl Inner {
             .unwrap_or(0);
         let mut state = State {
             extras: saved.extras,
+            mod_panes: saved.mod_panes,
             hub,
             prefix,
             next_pending,
@@ -456,7 +461,8 @@ impl Inner {
     /// The views or ids changed: if the document did too, a new version and
     /// news for Herdr to read it again.
     fn changed(s: &mut State) {
-        let doc = project::project(&Self::views(s), &s.aliases, &s.extras);
+        let mut doc = project::project(&Self::views(s), &s.aliases, &s.extras);
+        mod_panes::apply(&mut doc, &s.mod_panes);
         if doc == s.doc && s.version > 0 {
             return;
         }
@@ -1233,7 +1239,8 @@ impl Inner {
             .writing
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
-        let desired = &p["value"];
+        let (terminal_document, decorations) = mod_panes::capture(&p["value"])?;
+        let desired = &terminal_document;
         if self.lock().version != p["version"].as_u64().unwrap_or(0) {
             return Err(rpc("conflict", "the Rex sessions changed: read them again"));
         }
@@ -1284,6 +1291,7 @@ impl Inner {
                 s.extras.insert(session, SpaceExtra { folder, unnamed });
             }
         }
+        s.mod_panes = decorations;
         self.save(&s);
         Self::changed(&mut s);
         Ok(json!({ "version": s.version }))
@@ -1344,6 +1352,7 @@ impl Inner {
                 .map(|(h, r)| (h.clone(), r.clone()))
                 .collect(),
             extras: s.extras.clone(),
+            mod_panes: s.mod_panes.clone(),
         };
         if let Ok(bytes) = serde_json::to_vec_pretty(&saved) {
             let _ = std::fs::write(&self.saved, bytes);
