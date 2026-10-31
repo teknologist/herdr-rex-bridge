@@ -1,0 +1,5 @@
+Portions adapted from herdr-app (Apache-2.0), revision b877ff25c6bd20cfd2d5028bf2e8997162d1bdc0:
+src/rex/*.rs, snapshot helpers in src/screen.rs, crates/ghostty-sys.
+src/layout.rs adapted from upstream herdr-app revision 07ba77e.
+Copyright their respective contributors. See LICENSE.
+Ghostty is a pinned submodule with its own license and notices in vendor/ghostty.

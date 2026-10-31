@@ -1,0 +1,51 @@
+{
+  "spaces": [
+    {
+      "id": "rex/session:01a19396-15c3-73fd-a36e-3c906a236759",
+      "name": "Rex bridge demo",
+      "folder": "",
+      "machine": "rex",
+      "active": true,
+      "tabs": [
+        {
+          "id": "rex/window:01a19396-15d0-7006-9ac7-47365a48662f",
+          "name": "1",
+          "active": true,
+          "settled": false,
+          "terminals": [
+            {
+              "terminal": "rex/block:01a19396-15c3-75a4-8dba-f5371cc94d06",
+              "pane": "rex/pane-block:01a19396-15c3-75a4-8dba-f5371cc94d06",
+              "status": null,
+              "app": null,
+              "name": "shell",
+              "sub_agents": []
+            },
+            {
+              "terminal": "rex/r1",
+              "pane": "rex/p6b4413700c898e1bedb7744b922274f9",
+              "status": null,
+              "app": null,
+              "name": "shell",
+              "sub_agents": []
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "recent": [],
+  "window": {
+    "zoom": 1.0,
+    "font_size": 14.0,
+    "ui_font_size": 13.0,
+    "space": "rex/session:01a19396-15c3-73fd-a36e-3c906a236759",
+    "tab": "rex/window:01a19396-15d0-7006-9ac7-47365a48662f",
+    "focused_pane": "rex/p6b4413700c898e1bedb7744b922274f9",
+    "layout": "main",
+    "agent": null,
+    "floats": {},
+    "overlays": [],
+    "errors": []
+  }
+}
