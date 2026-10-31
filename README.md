@@ -1,147 +1,145 @@
-# Herdr Rex bridge
+# Rex servers for Herdr
 
-Use a Rex server from **stock Herdr**, alongside its existing local and SSH spaces.
-Rex appears as a machine group in Spaces. No Herdr fork, backend switcher, mod API
-extension, or replacement herdr-core is required.
+A Rex section in Herdr's sidebar. Each server has a connection indicator,
+collapsible space list, and a **+** action for creating a space. Selecting a
+space opens its Rex terminals in Herdr's normal tabs and panes.
 
-![Rex sessions in stock Herdr](preview.png)
+![Rex servers in Herdr's sidebar](preview.png)
 
-[RECIPE.md](RECIPE.md) is a reconstruction brief for building the bridge from an
-empty folder. This repository is the working implementation. It is an external
-bridge package, not a JavaScript mod for the Herdr mod catalog.
+The package includes two sidebar views and the external bridge that connects
+Herdr's existing machine protocol to Rex. It works with stock Herdr and keeps
+local/SSH machines in Spaces while Rex servers appear in their own section.
 
-Companion mod: [Easel for Herdr](https://github.com/yycholla/herdr-easel-mod).
+## What it does
 
-This is a standalone prototype extracted from the Rex integration in
-[yycholla/herdr-app](https://github.com/yycholla/herdr-app). It implements the
-existing generation-1 `hc connect` protocol and registers through herdr-core's
-`machine add --via` transport. Normal machines continue to use herdr-core.
+- Lists multiple Rex servers with the same compact header and avatar-row style
+  as Herdr's machine groups.
+- Shows connected, connecting and unavailable states; remembers folded servers.
+- Selects spaces on click, opens their normal context menu on right-click, and
+  creates a space with a connected server's **+** action.
+- Follows Herdr's theme and adapts to a narrow sidebar.
+- Keeps ordinary Spaces features—local/SSH machines, repo information, worktree
+  grouping, menus and ordering—in a separate Spaces view.
+- Uses Rex sessions, windows and terminal blocks as Herdr spaces, tabs and panes.
+  Layout changes are shared with other Rex clients.
+- Preserves native terminal output, input, resize, focus and reconnect repaint.
+- Keeps Herdr mod panes anchored beside Rex terminals across server updates
+  and bridge reconnects, without creating extra Rex terminals.
 
-## Build
+## Install with your agent
 
-Requires Rust, **Zig 0.16.0**, libclang/Clang, and the pinned Ghostty submodule.
-Build from this repository, independently of either Herdr checkout:
+Ask your agent to install this package into your existing sidebar and connect
+your Rex endpoint. [RECIPE.md](RECIPE.md) describes the complete setup and how
+to rebuild it from an empty folder. The agent should:
+
+1. Read the package and disclose the helper's program, file and network access.
+2. Build the bridge and put its executable at a stable absolute path.
+3. Register each endpoint with hc's existing machine transport.
+4. Copy both folders from `mods/`, preserving existing mods on name collisions.
+5. In your personal layout, point the Spaces block at `rex-bridge-spaces` and
+   add a `rex-bridge` block immediately beneath it in the same sidebar column.
+   Clone a shipped layout before changing it; keep your other panels and look.
+6. Run Herdr's checker on both mods and verify the live sidebar.
+
+The folders contain `mod.json` with `place: none`: the installing agent chooses
+where they fit. No layout is shipped and no custom key bindings are required.
+The shared provider list keeps Rex out of Spaces, so each server appears once.
+The sidebar itself neither installs programs nor connects new servers silently.
+
+## Build and connect manually
+
+Requires Rust, **Zig 0.16.0**, Clang/libclang, an installed herdr-core with `--via`
+support, and an existing Rex server that authorizes this machine.
 
 ```sh
 git clone --recurse-submodules https://github.com/yycholla/herdr-rex-bridge.git
 cd herdr-rex-bridge
-git submodule update --init --depth 1
 cargo build --locked
 ```
 
-If your default Zig differs, set `ZIG` to the absolute path of Zig 0.16.0.
-The binary is `target/debug/herdr-rex-bridge`. It has no runtime dependency on
-Herdr's source tree, GPUI, or the fork's binary.
-
-## Connect your server
-
-Use an existing Rex server that authorizes this machine. Register its endpoint
-with your normal `hc`; substitute the actual absolute paths:
+Set `ZIG` to the Zig 0.16.0 executable if your default version differs. Register
+an endpoint with a unique lowercase machine name and the bridge's absolute path:
 
 ```sh
-hc machine add --name rex --via '/absolute/path/herdr-rex-bridge --server unix:///run/user/1000/rex/server.sock via'
+hc machine add --name workstation --via '/absolute/path/herdr-rex-bridge --server unix:///run/user/1000/rex/server.sock via'
 ```
 
-A TCP endpoint also works: `--server wss://your-rex-host:7297`.
-Use `ws://` only for a listener you intend to reach without TLS. Endpoint
-credentials and query strings are refused; Rex controls authorization.
+For another server, use another name and its `wss://host:port` endpoint. `ws://`
+is also supported for listeners you intend to reach without TLS. Rex controls
+authorization. Register each endpoint once. Refresh the Rex section after adding
+a server, or let its 15-second connection refresh pick it up.
 
-Open stock Herdr. Its existing Spaces mod shows a **rex** group containing the
-server's sessions. Select one to use its tabs and panes. Creating and splitting
-panes through Herdr changes Rex's actual layout, shared with other Rex clients.
-Herdr's machine names are lowercase, so the registration is named `rex`.
+The JavaScript views use the external executable only through the normal core
+registration. Keep the binary at that path. The bridge needs no GPUI or Herdr
+source tree at runtime. Do not change Herdr's backend or core setting.
 
-Register each Rex endpoint once, with a distinct machine name. Add other Rex
-hosts as separate `hc machine add --via` registrations; the bridge does not
-import Rex's host list as nested machines. Keep your existing Herdr settings;
-do not set `backend`, `rex_server`, or `core` for this integration.
+To remove a registration, use `hc machine rm <name>`. This disconnects the
+bridge without asking Rex to close its sessions. To remove the sidebar package,
+restore the Spaces block to `spaces` and remove the Rex block from your personal
+layout before deleting the two mod folders.
 
-To remove the registration:
+## Package and data
 
-```sh
-hc machine rm rex
+```text
+mods/rex-bridge/          Rex server and space sidebar
+mods/rex-bridge-spaces/   Spaces view that leaves Rex to its own section
+RECIPE.md                reconstruction and installation brief
+preview.png              actual isolated Herdr screenshot
+src/, crates/, vendor/   standalone bridge source and pinned Ghostty
 ```
 
-The bridge does not ask Rex to close its sessions when the connection ends.
+`rex-bridge` accepts optional `machine` props to show one registered server;
+by default it shows all Rex bridge servers. It shares their names under
+`rex-bridge.servers`; the Spaces view uses that list for filtering. Server folds
+are stored per mod copy. It reads live spaces and shared avatar colors from
+Herdr, and calls `hc machine ls --json` for connection details.
 
-## What works
+The bridge sends terminal input and layout commands to Rex, reads its sessions
+and terminal streams, and keeps endpoint-specific alias/layout metadata under
+`$XDG_STATE_HOME/herdr-rex-bridge`, otherwise `~/.local/state/herdr-rex-bridge`.
+`--state-dir` overrides that location. The Spaces view also performs the same
+repo reads and git commands as Herdr's standard Spaces mod. No account credentials
+are bundled, and the screenshot uses private test servers and synthetic data.
 
-- Rex sessions → Herdr spaces, windows → tabs, tiled splits → panes.
-- Existing sessions and terminals remain authoritative on Rex.
-- Live terminal output, keyboard/mouse bytes, resize and focus.
-- Attach/reconnect repaint, screen colors/styles, cursor, history, primary and
-  alternate screens, keyboard modes, and unfinished VT/UTF-8 input.
-- Session/tab/pane changes through the projected Herdr layout document.
-- Herdr mod panes such as Easel beside Rex terminals. Their props and placement
-  are kept in bridge metadata and survive Rex updates and bridge reconnects;
-  Rex sees no fake terminal or custom block for them.
-- Terminal listing, creation, labels, read, keep, and close through the adapter.
-  Background runs materialize even when no viewer opens them.
-- Terminal/status/layout events, framed stream credits, and reconnect through
-  the normal core's machine transport.
+## Limits
 
-Rex answers device queries itself. The bridge removes those queries before
-sending output to Herdr, preventing duplicate answers from the display copy.
-The bridge's metadata lives under `$XDG_STATE_HOME/herdr-rex-bridge`, otherwise
-`~/.local/state/herdr-rex-bridge`; `--state-dir PATH` overrides it. Metadata is
-separate from Herdr's installed data and stores ID aliases/layout extras only.
+- Linux is tested. macOS is untested; hc's `--via` transport currently rejects
+  Windows. The sidebar requires the bridge's supported Rex API revision 7.
+- Kitty images, remote file/git operations over the bridge, Rex floating layers,
+  non-terminal blocks and Lua client keys/actions are not implemented. Existing
+  Rex non-terminal blocks are preserved.
+- A Herdr mod in a Rex tab needs a terminal anchor. Use a local mod tab for a
+  standalone canvas; removing its anchor hides the mod.
+- Register one core connection per Rex endpoint. Multiple independent cores
+  writing the same bridge metadata are not supported.
+- Unsupported protocol operations return errors. The wire version denotes hc
+  compatibility; `bridge_version` identifies this program.
 
-## Current limits
-
-This prototype has been tested on Linux. macOS has not been tested; herdr-core's
-`--via` transport currently rejects Windows. It is not a complete hc server:
-its `version` field identifies protocol compatibility, while `bridge_version`
-identifies this program. Unsupported operations return errors.
-
-- **Kitty images are omitted**, both in snapshots and live output. In particular,
-  file/shared-memory image requests never reach the stock display.
-- Remote file browsing, git queries and general `hc exec --on rex` are not
-  implemented. Terminal IO still runs on the selected Rex server.
-- Rex floating layers, non-terminal blocks, Lua client key bindings and client
-  actions are not projected. Existing non-terminal blocks are preserved.
-- A Herdr mod in a Rex tab needs a terminal beside it. Use a local Herdr mod
-  tab for a standalone canvas. Removing its anchor terminal hides the mod.
-- ID/layout extras assume one registered core connection per Rex endpoint.
-  Multiple independent cores writing those extras concurrently are not supported.
-
-## Validation
+## Validate
 
 ```sh
 cargo test --locked
 cargo build --locked
 python3 tests/smoke.py
+herdr-app check mods/rex-bridge
+herdr-app check mods/rex-bridge-spaces
 ```
 
-`tests/smoke.py` launches its own Rex server and hc session in temporary homes.
-It checks the real server, stdin/stdout framing, snapshot conversion, input,
-resize/focus/facts, layout edits, background creation, reconnect, `hc --via`,
-qualified terminal addresses and remote documents. It stops only its own servers.
-
-For the UI test, use a clean Herdr worktree and binary. Install the dependencies
-required by Herdr's `scripts/sandbox` (Weston, Xwayland, uv, ImageMagick):
+The real-server smoke test uses temporary Rex/core sessions and data. For a
+headless sidebar test and fresh screenshot, install Herdr's sandbox dependencies
+(Weston, Xwayland, uv and ImageMagick) and use a clean Herdr checkout/binary:
 
 ```sh
-HERDR_ORIGIN_WORKTREE=/absolute/path/herdr-app-origin \
-HERDR_ORIGIN_BIN=/absolute/path/to/upstream/herdr-app \
-python3 tests/ui_smoke.py
+HERDR_ORIGIN_WORKTREE=/path/to/herdr-app \
+HERDR_ORIGIN_BIN=/path/to/stock/herdr-app \
+python3 tests/mod_ui_smoke.py
 ```
 
-Pass `CARGO_TARGET_DIR` if the upstream worktree uses a shared target directory.
-The test creates an isolated app home/core and headless display, registers its
-own Rex server, checks typing and native pane splitting, saves a screenshot,
-and tears down the sandbox. It verifies that the upstream worktree stayed clean.
+Pass `CARGO_TARGET_DIR` if that checkout uses a shared build directory. The test
+starts two private Rex servers and a normal private core, checks separate groups,
+native terminal actions and narrow mode, saves `preview.png`, then stops only its
+own fixtures. `tests/ui_smoke.py` checks terminal splitting; the additional mod-pane
+regression test checks persistence across server updates and reconnects.
 
-Verified against upstream Herdr `07ba77e`, hc `0.1.14`, and Rex API revision 7.
-With Easel built in a sibling checkout (or `EASEL_WORKTREE` set),
-`tests/easel_ui_smoke.py` also verifies its MCP opens beside a raw `REX_BLOCK`,
-remains after a Rex session rename, survives bridge transport reconnection,
-and creates no extra Rex terminal.
-
-The captured result is in `artifacts/stock-herdr-rex.png`; the companion JSON
-contains Herdr's space/pane inspection and error list.
-
-## Sources
-
-See `NOTICE` and `LICENSE`. The Rex transport, data decoder and layout mapping
-are adapted from the fork; Ghostty is a pinned upstream submodule. The bridge's
-hc wire server and snapshot-to-VT adapter are separate from the Herdr application.
+Verified against Herdr 0.1.10 (`07ba77e`), hc 0.1.14 and Rex API revision 7.
+Source attribution and the Apache-2.0 license are in NOTICE and LICENSE.

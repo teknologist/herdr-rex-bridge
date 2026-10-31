@@ -1,29 +1,48 @@
-# Rex bridge for Herdr
+# Rex servers for Herdr
 
-Rex sessions appear as another machine group in Herdr's existing Spaces sidebar,
-beside this computer and its SSH machines. Selecting one shows Rex's own tabs
-and terminal splits; typing and arranging panes works through Herdr's normal
-controls. The person keeps stock Herdr and herdr-core. This is an external
-protocol bridge, not a JavaScript mod or replacement layout.
+A sidebar section for Rex servers and their spaces, styled like Herdr's ordinary
+machine groups. Local and SSH spaces stay in the Spaces section above it. The
+person can fold a Rex server, select one of its spaces, and create a new space
+without switching the whole window to another backend. Its terminals use
+Herdr's existing tabs, panes and terminal renderer.
 
-![Rex bridge for Herdr](preview.png)
+![Rex servers for Herdr](preview.png)
 
 ## What you see
 
-Reuse the person's current Herdr layout, theme, fonts and shipped mods. Add a
-machine group named rex through normal machine registration. In the shipped
-Spaces sidebar this means the usual 26px server header, small name, 6px connection
-dot and collapse chevron, with 30px space rows beneath it. Each Rex session is a
-space, each window a tab and each tiled terminal block a pane. Do not paint a new
-sidebar, global backend selector, custom title bar or alternate terminal view.
+Keep the person's existing sidebar, theme, fonts, agent list and other panels.
+Inside its column, place Spaces first, a separate Rex block beneath it, and the
+remaining panels after that. Both lists scroll within the space they receive;
+do not open a connection dashboard tab or allocate another sidebar column.
 
-The screenshot is stock Herdr showing a private test server: its rex group,
-selected demo session and two native terminal panes. Local spaces remain visible
-above it. Existing SSH machines remain available in real use. Herdr's own
-connection-state text and theme colors indicate connecting, connected or lost
-connections; the bridge adds no separate notification UI.
+The Rex section has a 31px header, a small muted Rex title at the left and a
+26px refresh control at the right. Each server uses a compact 26px header:
+13px server icon, truncated 11px name, connected-server plus action, 6px
+connection dot and 11px fold chevron. Use theme chrome/dim/hover colors; the
+connected dot is ansi2 and an unavailable dot is dim. Non-connected states show
+the core's short state text beside the name.
+
+Under a server, show 30px space rows with 8px horizontal padding, 8px corners,
+a stable colored 18px avatar with 5px corners, and a truncated 13px name. Active
+rows use the selected background; other rows use hover on pointer entry. A small
+status glyph uses the space's status color. Show a muted empty/unavailable line
+when a server has no spaces. A narrow sidebar under 160px uses compact avatars
+and icons rather than overflowing labels.
+
+The Spaces section keeps the existing local/SSH presentation, repo information,
+worktree grouping, context menus and ordering. Filter Rex groups out of this
+view so they are not listed twice. Normal core machines still appear there,
+including disconnected ones. No layout file or key snippet ships in the package.
+
+The screenshot shows two private Rex servers and a normal core in an isolated
+Herdr window. Its names and terminal text are sample content, not installation
+requirements. Icons are simple line server/chevron SVGs; bring no custom fonts.
 
 ## How it behaves
+
+Clicking a server header folds its spaces and remembers that per-copy choice.
+Its plus action creates a space on that server; refresh rereads the connection
+list. Clicking a space selects it; right-click opens Herdr's usual space menu.
 
 Selecting a Rex space opens that server's session without switching Herdr away
 from its other machines. The person can type, paste, use terminal mouse modes,
@@ -35,8 +54,8 @@ restart their programs.
 Working, blocked, done and idle come from Rex terminal status reports. Publish
 them as ordinary core terminal/status events; Herdr applies its own attention
 rules, agent colors and completed-work handling. Do not add a separate status
-palette or pretend every shell is an agent. The bridge adds no keys or hover
-behavior; those stay with Herdr and the foreground terminal program.
+palette or pretend every shell is an agent. Terminal keys and mouse behavior stay with Herdr and the foreground terminal
+program. The sidebar uses ordinary hover feedback without global key bindings.
 
 On attachment or reconnect, show the current terminal screen, retained history,
 styles, cursor, primary/alternate screen state and input modes before live
@@ -45,7 +64,7 @@ space. Unknown or removed objects do not become new terminals by accident.
 A slow viewer may lose its attachment and reconnect; it must not silently miss
 individual output bytes or block unrelated RPC work.
 
-A Herdr mod such as Easel may sit beside a Rex terminal. It remains a Herdr mod,
+A Herdr mod may sit beside a Rex terminal. It remains a Herdr mod,
 with its own props and pane identity. Keep its placement through Rex layout
 updates and bridge reconnects without creating a dummy terminal or custom Rex
 block. If its terminal anchor disappears, omit the orphaned mod. For a canvas
@@ -53,8 +72,46 @@ with no terminal beside it, use a local Herdr mod tab.
 
 ## Built from
 
-Create a standalone executable named herdr-rex-bridge, with no layout or mod
-folder. It speaks the existing generation-1 hc connect protocol on stdin/stdout
+Build this as an agent-installed package containing the external executable
+herdr-rex-bridge and two native JavaScript views, with no layouts/ folder:
+
+```text
+mods/rex-bridge/main.js          Rex server and space groups
+mods/rex-bridge/mod.json         place: none, title: Rex
+mods/rex-bridge/*.svg            server and fold icons
+mods/rex-bridge-spaces/main.js   normal Spaces with Rex filtering
+mods/rex-bridge-spaces/mod.json  place: none, title: Spaces
+```
+
+The Rex view is a default-exported View built with div/svg, v_flex/h_flex and
+Herdr's hc, props, run, spaces, shared, setShared, openOverlay and theme APIs.
+Read server connections through hc machine ls --json: identify a bridge by its
+via flag and rex-prefixed stable core ID, not by a hard-coded machine name.
+Ignore temporary machines. Refresh on opening, on the refresh control, and every
+15 seconds. Live spaces/theme/shared changes redraw naturally; do not poll them.
+Publish sorted server names to shared rex-bridge.servers only when they change.
+An optional machine prop filters the Rex view to one registered name. Save folded
+server names in this mod copy's localStorage. Use on_size_change for narrow mode.
+Run space.select with an explicit ID, space.new with the selected server's name,
+and openOverlay with the shipped menu's space target for right-click. Do not
+install binaries or register servers as an automatic render side effect.
+
+For the normal Spaces view, copy the stock mod at build/install time and make
+a personal filtered version. Hide the Rex provider names published above, filter
+Rex machine records from its server headers, and skip their unsupported repo
+queries. Keep the original global space indices for drag actions and the full
+live ID set for shared color bookkeeping. Never read another mod's source at
+runtime or edit Herdr's shipped copy. Use built-in icons for that Spaces view;
+ship the Rex view's own SVGs under its mod folder.
+
+The installing agent reads the package, builds the helper, registers endpoints,
+and copies both mod folders without overwriting an occupied name. In a personal
+layout, point the existing Spaces block to rex-bridge-spaces and add a rex-bridge
+block directly below it in the same column. Clone a shipped layout before editing
+it. Preserve the other panels, widths, fonts, theme and settings. Let the person
+resize the blocks as usual; don't ship or switch to a replacement layout.
+
+The external executable speaks the existing generation-1 hc connect protocol on stdin/stdout
 and translates it to Rex API revision 7. Herdr's existing machine transport is
 the integration point:
 
@@ -95,7 +152,7 @@ Use the public hc schema and Rex protocols as the wire contracts:
   Do not leave synchronized-output state freezing the new display.
 - Rex already answers device queries. Remove those queries before the display
   sees them, including partial sequences crossing reads. Do not enable a
-  second source of in-band resize reports. Omit Kitty images in this prototype,
+  second source of in-band resize reports. Omit Kitty images,
   including file/shared-memory requests that could address the viewer's files.
 
 Map Rex's session/window/tiled split/block structures into the machine's
@@ -125,9 +182,10 @@ integration. Build Rust and the pinned Ghostty source with Zig 0.16.0 and Clang.
 
 ## Watch out
 
-- This is not a Herdr catalog mod: there is no mods/name/main.js to copy. Build
-  the executable and register it using hc's existing --via interface. Never
-  change the person's backend, core setting, keys or layout to install it.
+- This mod requires an external executable. The installing agent must build it,
+  register it through hc --via, and place the two sidebar views. Copying only the
+  JavaScript does not establish a server connection. Do not change backend/core
+  settings or global keys; edit only the person's sidebar placement.
 - The bridge connects to a Rex server and reads terminal/session data. User
   input and layout commands are sent to that server. Its metadata is local;
   it starts no Rex server and should never stop or restart somebody else's.
@@ -137,7 +195,7 @@ integration. Build Rust and the pinned Ghostty source with Zig 0.16.0 and Clang.
 - Register each Rex endpoint once. Other Rex hosts need separate ordinary hc
   machine registrations; do not inject nested machine names from Rex's host
   list. Simultaneous independent cores writing the same bridge metadata are
-  outside this prototype's support.
+  unsupported.
 - Only terminal tiled layers are projected. Keep unknown Rex blocks and floating
   layers safe, but do not claim to display them. Lua client keys/actions are
   not forwarded. General hc exec, remote files/git panels and Kitty images
@@ -158,8 +216,13 @@ integration. Build Rust and the pinned Ghostty source with Zig 0.16.0 and Clang.
 
 ## Done when
 
-- An unmodified upstream Herdr shows rex alongside local and SSH machines,
-  without a global backend switcher or a changed layout file.
+- An unmodified Herdr binary shows a separate Rex section with multiple servers
+  and spaces, beside the normal local/SSH Spaces section, with no duplicate Rex
+  rows or global backend switcher. The package contains no layouts/ folder.
+- Both JavaScript views pass the checker, render in a real isolated window,
+  follow light/dark themes, and remain usable at narrow sidebar widths.
+- Server folds persist, refresh updates the server list, a space row selects the
+  exact space, and the connected-server plus action creates a space there.
 - Its normal terminal and layout controls alter an isolated Rex fixture, and
   an external Rex rename/split appears back in Herdr.
 - Reconnecting restores existing output, colors, cursor, modes, history and the
@@ -171,7 +234,7 @@ integration. Build Rust and the pinned Ghostty source with Zig 0.16.0 and Clang.
   stale document versions fail without changing the server.
 - A blocked credit gate affects only that stream, malformed/oversize frames
   are rejected, and closing the stream wakes its waiter.
-- An Easel mod beside the terminal survives an external Rex update and bridge
+- A Herdr mod beside the terminal survives an external Rex update and bridge
   reconnect, keeps its project props and creates no extra Rex terminal.
 - The live server process and sessions survive removing/reconnecting the hc
   registration. Other registered machines and the user's app settings remain.

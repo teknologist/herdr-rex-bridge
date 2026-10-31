@@ -3,3 +3,6 @@ src/rex/*.rs, snapshot helpers in src/screen.rs, crates/ghostty-sys.
 src/layout.rs adapted from upstream herdr-app revision 07ba77e.
 Copyright their respective contributors. See LICENSE.
 Ghostty is a pinned submodule with its own license and notices in vendor/ghostty.
+
+mods/rex-bridge-spaces/main.js and the Rex panel SVG icons are adapted from
+upstream herdr-app revision 07ba77e, Apache-2.0.
