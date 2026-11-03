@@ -908,31 +908,63 @@ impl Inner {
             .send(input);
     }
 
+    /// Make this client the block's owner, so Rex uses the size it asks for.
+    fn own(&self, session: &str, block: &str) {
+        if let Err(e) = self.call(
+            "session.own_block",
+            json!({ "session_id": session, "block_ids": [block], "mode": "take" }),
+        ) {
+            tracing::debug!("rex own_block {block}: {e:#}");
+        }
+    }
+
     fn input_loop(&self, queue: &mpsc::Receiver<Input>) {
+        // When each block was last claimed for typing, to claim at most once a second.
+        let mut claimed: HashMap<String, Instant> = HashMap::new();
         while let Ok(input) = queue.recv() {
             let result = match input {
                 Input::Write {
                     session,
                     block,
                     data,
-                } => self.terminal(&session, &block, "write", json!({ "data": data })),
+                } => {
+                    // Typing here means people are using this view: take the size
+                    // back from another client (Rex.app) that claimed the block.
+                    // hc does not forward pane focus, so this and resize are the
+                    // signals the bridge gets.
+                    let now = Instant::now();
+                    if claimed
+                        .get(&block)
+                        .is_none_or(|t| now.duration_since(*t) >= Duration::from_secs(1))
+                    {
+                        self.own(&session, &block);
+                        claimed.insert(block.clone(), now);
+                    }
+                    self.terminal(&session, &block, "write", json!({ "data": data }))
+                }
                 Input::Resize {
                     session,
                     block,
                     cols,
                     rows,
-                } => self.terminal(
-                    &session,
-                    &block,
-                    "resize",
-                    json!({ "columns": cols.max(1), "rows": rows.max(1) }),
-                ),
+                } => {
+                    // Rex applies a size only from the block's owner. Herdr sends one
+                    // when it lays a pane out for this block, which means someone is
+                    // looking at it here: claim the block so the program draws for
+                    // the grid Herdr shows. Without this, another client (Rex.app)
+                    // keeps its size and Herdr renders text wrapped for a wider or
+                    // taller terminal. Rex.app takes the block back when it is used.
+                    self.own(&session, &block);
+                    self.terminal(
+                        &session,
+                        &block,
+                        "resize",
+                        json!({ "columns": cols.max(1), "rows": rows.max(1) }),
+                    )
+                }
                 Input::Focus { session, block } => {
                     // The size follows the client people are looking at, as in Rex.app.
-                    let _ = self.call(
-                        "session.own_block",
-                        json!({ "session_id": session, "block_ids": [block], "mode": "take" }),
-                    );
+                    self.own(&session, &block);
                     let _ = self.call("block.event", json!({ "session_id": session, "block_id": block, "event": { "type": "focus", "payload": { "action": "in" } } }));
                     self.call(
                         "session.focus_block",

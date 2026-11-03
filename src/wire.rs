@@ -140,6 +140,7 @@ impl Connection {
                 {
                     return self.reply(id, Err(anyhow::anyhow!("invalid terminal size")));
                 }
+                tracing::debug!("ATTACH {}: {cols}x{rows}", p["terminal"]);
                 match self.core.link.attach(
                     p["terminal"].as_str().unwrap_or_default(),
                     cols as u16,
@@ -242,10 +243,12 @@ impl Connection {
                     cols > 0 && rows > 0 && u32::from(cols) * u32::from(rows) <= 65536,
                     "bad size"
                 );
+                tracing::debug!("RESIZE channel {ch}: {cols}x{rows}");
                 self.core.link.resize(ch, cols, rows);
             }
             FOCUS => {
                 ensure!(p.len() == 1, "bad FOCUS");
+                tracing::debug!("FOCUS channel {ch}: {}", p[0] != 0);
                 self.core.link.focus(ch, p[0] != 0);
             }
             FACTS => self.core.link.facts(ch, &serde_json::from_slice(p)?),
